@@ -71,6 +71,18 @@ billig process (35 000 kr/mån) och en dyr specialist som bygger (75 000 kr/mån
 
 Vill man räkna snålare sätter man `overhead_pct=0.0` → ca **510 kr/h**.
 
+## Kalkylator i webbläsaren
+
+`docs/kalkylator.html` är samma modell portad till en enda fristående HTML-fil: reglage för
+alla parametrar, Monte Carlo och känslighetsanalys som räknas om live, plus en färdig
+sammanfattning att klistra in i ett beslutsunderlag. Inga bibliotek, inga nätverksanrop —
+allt körs i webbläsaren, så lönesiffrorna lämnar aldrig datorn. De deterministiska talen
+är identiska med notebooken; Monte Carlo skiljer sig på tredje decimalen eftersom
+slumpgeneratorn är en annan.
+
+Öppna filen lokalt, eller bädda in den på en SharePoint-sida — steg för steg i
+[docs/SHAREPOINT.md](docs/SHAREPOINT.md).
+
 ## Köra
 
 ```bash

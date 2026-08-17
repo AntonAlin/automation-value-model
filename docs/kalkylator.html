@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Automatiseringskalkyl</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --ink: #1b1f23;
+    --ink-soft: #5b6570;
+    --line: #dde1e6;
+    --line-soft: #eceef1;
+    --accent: #2f5d9e;
+    --accent-soft: #e8effa;
+    --pos: #2e7d5b;
+    --neg: #b23a3a;
+    --warn: #9a6b1f;
+    --focus: #2f5d9e;
+    --radius: 10px;
+  }
+  :root:not([data-theme="light"]) {
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171a;
+      --panel: #1c2024;
+      --ink: #e8eaed;
+      --ink-soft: #a3abb4;
+      --line: #333a41;
+      --line-soft: #262c31;
+      --accent: #7ba7e6;
+      --accent-soft: #22303f;
+      --pos: #63c295;
+      --neg: #e08585;
+      --warn: #d6ab5e;
+      --focus: #7ba7e6;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171a;
+    --panel: #1c2024;
+    --ink: #e8eaed;
+    --ink-soft: #a3abb4;
+    --line: #333a41;
+    --line-soft: #262c31;
+    --accent: #7ba7e6;
+    --accent-soft: #22303f;
+    --pos: #63c295;
+    --neg: #e08585;
+    --warn: #d6ab5e;
+    --focus: #7ba7e6;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+
+  header h1 { font-size: 21px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header p { margin: 0 0 20px; color: var(--ink-soft); max-width: 70ch; }
+
+  .layout { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; gap: 20px; align-items: start; }
+  .layout > * { min-width: 0; }                 /* låt tabeller scrolla, inte sidan */
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+  .panel + .panel { margin-top: 16px; }
+
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); margin: 0 0 12px; font-weight: 600; }
+  fieldset { border: 0; margin: 0 0 18px; padding: 0; }
+  fieldset:last-of-type { margin-bottom: 0; }
+  legend { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 600; padding: 0 0 8px; }
+
+  .field { display: grid; grid-template-columns: 1fr 96px; gap: 8px 10px; align-items: center; margin-bottom: 9px; }
+  .field label { font-size: 14px; }
+  .field .hint { grid-column: 1 / -1; font-size: 12px; color: var(--ink-soft); margin-top: -4px; }
+  .field.slider { grid-template-columns: 1fr 96px; }
+  .field.slider input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: var(--accent); }
+
+  input[type="number"] {
+    width: 100%; padding: 6px 8px; text-align: right;
+    background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px;
+    font: inherit; font-variant-numeric: tabular-nums;
+  }
+  input[type="number"]:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--focus); outline-offset: 1px;
+  }
+  select {
+    padding: 5px 8px; background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px; font: inherit;
+  }
+  input.invalid { border-color: var(--neg); }
+
+  button {
+    font: inherit; padding: 7px 12px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  details { border-top: 1px solid var(--line-soft); padding-top: 10px; margin-top: 4px; }
+  details summary { cursor: pointer; font-size: 13px; color: var(--ink-soft); font-weight: 600; }
+  details[open] summary { margin-bottom: 10px; }
+  details .body { font-size: 14px; color: var(--ink-soft); }
+  details .body p { margin: 0 0 10px; }
+
+  .verdict {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px;
+    border-left: 4px solid var(--accent); background: var(--accent-soft);
+    padding: 12px 14px; border-radius: 6px; margin-bottom: 16px;
+  }
+  .verdict .v-text { font-size: 19px; font-weight: 650; letter-spacing: -0.01em; }
+  .verdict .v-sub { color: var(--ink-soft); font-size: 14px; }
+  .verdict.good { border-color: var(--pos); }
+  .verdict.bad { border-color: var(--neg); }
+  .verdict.mid { border-color: var(--warn); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .card { border: 1px solid var(--line-soft); border-radius: 8px; padding: 10px 12px; }
+  .card .k { font-size: 12px; color: var(--ink-soft); }
+  .card .v { font-size: 19px; font-weight: 620; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; margin-top: 2px; }
+  .card .n { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+  .v.pos { color: var(--pos); }
+  .v.neg { color: var(--neg); }
+
+  .chart-wrap { position: relative; width: 100%; }
+  canvas { display: block; width: 100%; }
+
+  table { border-collapse: collapse; width: 100%; min-width: 440px; font-size: 14px; }
+  th, td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--line-soft); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; font-variant-numeric: normal; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 12px; }
+  .scroll-x { overflow-x: auto; }
+
+  .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+  .row-actions .status { font-size: 12px; color: var(--ink-soft); }
+
+  .footnote { font-size: 12px; color: var(--ink-soft); margin-top: 10px; }
+  .footnote a { color: var(--accent); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Automatiseringsbeslut: riskjusterad kalkyl</h1>
+    <p>Är rutinen värd att automatisera? Modellen svarar i kronor, med osäkerheten kvantifierad:
+       hur sannolikt det är att det lönar sig, hur mycket i snitt, och hur mycket som står på spel om det går snett.</p>
+  </header>
+
+  <div class="layout">
+    <!-- ------------------------------------------------------------------ -->
+    <form class="panel" id="form" autocomplete="off">
+      <h2>Indata</h2>
+
+      <fieldset>
+        <legend>Manuellt arbete</legend>
+        <div class="field">
+          <label for="manual_minutes_per_run">Minuter per körning</label>
+          <input type="number" id="manual_minutes_per_run" min="0.1" step="1" value="90">
+          <div class="hint">Ärlig tid för hand, inklusive avbrott och rättningar.</div>
+        </div>
+        <div class="field">
+          <label for="runs_per_year">Körningar per år</label>
+          <input type="number" id="runs_per_year" min="0.1" step="1" value="52">
+          <div class="hint">52 = varje vecka, 250 = varje arbetsdag, 12 = varje månad.</div>
+        </div>
+        <div class="field">
+          <label for="horizon_years">Horisont (år)</label>
+          <input type="number" id="horizon_years" min="0.1" step="0.5" value="3">
+          <div class="hint">Hur länge processen realistiskt lever.</div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Bygg och underhåll</legend>
+        <div class="field">
+          <label for="build_hours">Byggtid (timmar)</label>
+          <input type="number" id="build_hours" min="0.1" step="1" value="40">
+        </div>
+        <div class="field">
+          <label for="maintenance_hours_per_year">Underhåll (h/år)</label>
+          <input type="number" id="maintenance_hours_per_year" min="0" step="1" value="8">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Lön &rarr; timpris</legend>
+        <div class="field">
+          <label for="monthly_salary_sek">Månadslön, den som gör jobbet idag</label>
+          <input type="number" id="monthly_salary_sek" min="0" step="1000" value="55000">
+        </div>
+        <div class="field">
+          <label for="builder_monthly_salary_sek">Månadslön, den som bygger</label>
+          <input type="number" id="builder_monthly_salary_sek" min="0" step="1000" placeholder="samma">
+          <div class="hint">Lämna tomt om det är samma yrkesgrupp.</div>
+        </div>
+        <div class="field">
+          <label for="overhead_pct">Overhead (%)</label>
+          <input type="number" id="overhead_pct" min="0" max="200" step="1" value="35">
+          <div class="hint">Pension, semester, lokaler, IT, adm. 0 = snål kalkyl.</div>
+        </div>
+        <div class="field">
+          <label for="social_fee_pct">Arbetsgivaravgift (%)</label>
+          <input type="number" id="social_fee_pct" min="0" max="100" step="0.01" value="31.42">
+        </div>
+        <div class="field">
+          <label for="effective_hours_per_year">Effektiva timmar per år</label>
+          <input type="number" id="effective_hours_per_year" min="1" step="1" value="1702">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Risk och värde</legend>
+        <div class="field slider">
+          <label for="capacity_realization">Andel sparad tid som blir värde (%)</label>
+          <input type="number" id="capacity_realization" min="0" max="100" step="1" value="70">
+          <input type="range" id="capacity_realization_r" min="0" max="100" step="1" value="70" aria-label="Andel sparad tid som blir värde, reglage">
+          <div class="hint">Frigjord tid som ingen använder till något är inte en besparing.</div>
+        </div>
+        <div class="field slider">
+          <label for="p_go_live">Chans att bygget når produktion (%)</label>
+          <input type="number" id="p_go_live" min="0" max="100" step="1" value="90">
+          <input type="range" id="p_go_live_r" min="0" max="100" step="1" value="90" aria-label="Chans att bygget når produktion, reglage">
+        </div>
+        <div class="field slider">
+          <label for="reliability">Tillförlitlighet (%)</label>
+          <input type="number" id="reliability" min="0" max="100" step="1" value="95">
+          <input type="range" id="reliability_r" min="0" max="100" step="1" value="95" aria-label="Tillförlitlighet, reglage">
+          <div class="hint">Andel körningar automationen klarar rätt.</div>
+        </div>
+        <div class="field slider">
+          <label for="obsolescence_hazard">Årlig risk att processen dör (%)</label>
+          <input type="number" id="obsolescence_hazard" min="0" max="100" step="1" value="10">
+          <input type="range" id="obsolescence_hazard_r" min="0" max="100" step="1" value="10" aria-label="Årlig risk att processen dör, reglage">
+        </div>
+        <div class="field">
+          <label for="discount_rate">Kalkylränta (%)</label>
+          <input type="number" id="discount_rate" min="0" max="100" step="0.5" value="5">
+          <div class="hint">Tidsvärde på framtida kronor.</div>
+        </div>
+      </fieldset>
+
+      <details>
+        <summary>Monte Carlo-antaganden</summary>
+        <div class="body">
+          <div class="field">
+            <label for="n_sims">Antal simuleringar</label>
+            <select id="n_sims" style="width:100%">
+              <option value="10000">10 000</option>
+              <option value="50000" selected>50 000</option>
+              <option value="200000">200 000</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="build_sigma">Spridning byggtid (lognormal &sigma;)</label>
+            <input type="number" id="build_sigma" min="0.01" max="2" step="0.05" value="0.4">
+          </div>
+          <div class="field">
+            <label for="manual_low_frac">Manuell tid, låg (andel)</label>
+            <input type="number" id="manual_low_frac" min="0.05" max="1" step="0.05" value="0.7">
+          </div>
+          <div class="field">
+            <label for="manual_high_frac">Manuell tid, hög (andel)</label>
+            <input type="number" id="manual_high_frac" min="1" max="5" step="0.05" value="1.4">
+          </div>
+          <div class="field">
+            <label for="reliability_conf">Säkerhet i tillförlitlighet</label>
+            <input type="number" id="reliability_conf" min="1" step="5" value="40">
+          </div>
+          <div class="field">
+            <label for="maint_gamma_shape">Underhållets gamma-form</label>
+            <input type="number" id="maint_gamma_shape" min="0.1" step="0.5" value="4">
+          </div>
+          <div class="field">
+            <label for="hazard_conf">Säkerhet i processrisk</label>
+            <input type="number" id="hazard_conf" min="1" step="5" value="30">
+          </div>
+          <div class="field">
+            <label for="seed">Slumpfrö</label>
+            <input type="number" id="seed" min="0" step="1" value="42">
+          </div>
+        </div>
+      </details>
+
+      <div class="row-actions">
+        <button type="button" id="reset">Återställ</button>
+        <button type="button" id="permalink">Kopiera länk till caset</button>
+        <span class="status" id="form-status" role="status"></span>
+      </div>
+    </form>
+
+    <!-- ------------------------------------------------------------------ -->
+    <div>
+      <div class="panel">
+        <h2>Dom</h2>
+        <div class="verdict" id="verdict">
+          <span class="v-text" id="verdict-text">&mdash;</span>
+          <span class="v-sub" id="verdict-sub"></span>
+        </div>
+        <div class="cards" id="cards"></div>
+        <p class="footnote" id="rate-note"></p>
+      </div>
+
+      <div class="panel">
+        <h2>Monte Carlo: fördelning av nettovärde</h2>
+        <div class="chart-wrap"><canvas id="hist" height="300" role="img"
+             aria-label="Histogram över simulerat nettovärde"></canvas></div>
+        <div class="scroll-x">
+          <table id="mc-table">
+            <thead><tr><th>Percentil</th><th>P5 (VaR)</th><th>P10</th><th>P50</th><th>P90</th></tr></thead>
+            <tbody><tr id="mc-row"><td>Nettovärde</td><td></td><td></td><td></td><td></td></tr></tbody>
+          </table>
+        </div>
+        <p class="footnote">Puckeln längst till vänster är inte brus &mdash; det är scenarierna där bygget
+           aldrig når produktion och hela byggkostnaden är bortkastad.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Känslighet &plusmn;25 %: vad styr utfallet</h2>
+        <div class="chart-wrap"><canvas id="tornado" height="300" role="img"
+             aria-label="Tornadodiagram över parametrarnas påverkan"></canvas></div>
+        <div class="scroll-x">
+          <table id="sens-table">
+            <thead><tr><th>Parameter</th><th>&minus;25 %</th><th>+25 %</th><th>Spann</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Sammanfattning</h2>
+        <p class="footnote" style="margin-top:0">Text att klistra in i beslutsunderlag, ärende eller mejl.</p>
+        <div class="row-actions" style="margin-top:0">
+          <button type="button" class="primary" id="copy-summary">Kopiera sammanfattning</button>
+          <span class="status" id="copy-status" role="status"></span>
+        </div>
+        <label class="sr-only" for="summary-text">Sammanfattning</label>
+        <textarea id="summary-text" rows="14" readonly style="width:100%;margin-top:12px;background:var(--bg);
+          color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px;
+          font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;resize:vertical"></textarea>
+      </div>
+
+      <div class="panel">
+        <details>
+          <summary>Så räknas det</summary>
+          <div class="body">
+            <p><strong>1. Deterministisk kalkyl.</strong> Sparade timmar minus underhåll minus byggtid,
+               justerat för tre saker som brukar glömmas: att framtida tid är mindre värd än tid idag
+               (diskontering), att processen kan dö innan horisonten är slut (överlevnad), och att bygget
+               kanske aldrig når produktion.</p>
+            <p><strong>2. Monte Carlo.</strong> Tusentals scenarier där byggtid (lognormal, fet svans uppåt),
+               manuell tid (triangulär), tillförlitlighet (beta), underhåll (gamma) och processrisk varierar.
+               Ut kommer en fördelning istället för en punkt.</p>
+            <p><strong>3. Känslighet.</strong> Varje parameter knuffas &plusmn;25 % och rangordnas efter hur
+               mycket den flyttar nettovärdet &mdash; alltså var det är värt att gräva innan beslut.</p>
+            <p><strong>Timpriset härleds, gissas inte:</strong> månadslön &times; 12, plus arbetsgivaravgift,
+               plus overhead, delat på effektiva timmar per år. Byggtimmen prissätts efter byggarens lön,
+               den sparade timmen efter verksamhetens.</p>
+            <p><strong>Där modellen förenklar:</strong> alla osäkra parametrar dras oberoende av varandra.
+               I verkligheten hänger ett strulande bygge ihop med både mer underhåll och högre risk att det
+               aldrig når produktion, så den verkliga svansen nedåt är något tjockare än siffrorna visar.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------------------------------------------------------------------------
+   Modellen. Direkt port av projektautomatisering.ipynb — samma formler,
+   samma defaultvärden. Deterministiska talen är identiska med Python;
+   Monte Carlo skiljer sig på tredje decimalen eftersom slumpgeneratorn
+   är en annan.
+--------------------------------------------------------------------------- */
+
+const DEFAULTS = {
+  manual_minutes_per_run: 90,
+  runs_per_year: 52,
+  horizon_years: 3,
+  build_hours: 40,
+  maintenance_hours_per_year: 8,
+  monthly_salary_sek: 55000,
+  builder_monthly_salary_sek: null,
+  social_fee_pct: 31.42,          // procent i UI, andel i modellen
+  overhead_pct: 35,
+  effective_hours_per_year: 1702,
+  p_go_live: 90,
+  reliability: 95,
+  obsolescence_hazard: 10,
+  discount_rate: 5,
+  capacity_realization: 70,
+  build_sigma: 0.4,
+  manual_low_frac: 0.7,
+  manual_high_frac: 1.4,
+  reliability_conf: 40,
+  maint_gamma_shape: 4,
+  hazard_conf: 30,
+  n_sims: 50000,
+  seed: 42,
+};
+
+// Fält som anges i procent i formuläret men som andel i modellen.
+const PCT_FIELDS = ["social_fee_pct", "overhead_pct", "p_go_live", "reliability",
+                    "obsolescence_hazard", "discount_rate", "capacity_realization"];
+const PROB_PARAMS = new Set(["p_go_live", "reliability", "obsolescence_hazard",
+                             "capacity_realization"]);
+
+function burdenedHourlyRate(monthly, socialFee, overhead, effHours) {
+  return (monthly * 12 * (1 + socialFee) * (1 + overhead)) / effHours;
+}
+
+function recomputeRates(c) {
+  c.hourly_value_sek = burdenedHourlyRate(
+    c.monthly_salary_sek, c.social_fee_pct, c.overhead_pct, c.effective_hours_per_year);
+  const builderSalary = c.builder_monthly_salary_sek === null
+    ? c.monthly_salary_sek : c.builder_monthly_salary_sek;
+  c.build_hourly_cost_sek = burdenedHourlyRate(
+    builderSalary, c.social_fee_pct, c.overhead_pct, c.effective_hours_per_year);
+  return c;
+}
+
+function validate(c) {
+  const errs = [];
+  if (!(c.manual_minutes_per_run > 0)) errs.push("minuter per körning måste vara > 0");
+  if (!(c.runs_per_year > 0)) errs.push("körningar per år måste vara > 0");
+  if (!(c.horizon_years > 0)) errs.push("horisont måste vara > 0");
+  if (!(c.build_hours > 0)) errs.push("byggtid måste vara > 0");
+  if (!(c.maintenance_hours_per_year >= 0)) errs.push("underhåll kan inte vara negativt");
+  if (!(c.effective_hours_per_year > 0)) errs.push("effektiva timmar måste vara > 0");
+  for (const p of PROB_PARAMS) {
+    if (!(c[p] >= 0 && c[p] <= 1)) errs.push(p + " måste ligga mellan 0 och 100 %");
+  }
+  return errs;
+}
+
+/** (andel av år, tidpunkt t) per (del)år. Delåret får fraktionellt slut-t. */
+function yearChunks(horizonYears) {
+  const full = Math.floor(horizonYears);
+  const remainder = horizonYears - full;
+  const chunks = [];
+  for (let t = 1; t <= full; t++) chunks.push([1.0, t]);
+  if (remainder > 0) chunks.push([remainder, full + remainder]);
+  return chunks;
+}
+
+const clamp01 = x => Math.min(Math.max(x, 0), 1);
+
+function hoursToValueSek(savedHours, c) {
+  return savedHours * c.capacity_realization * c.hourly_value_sek;
+}
+
+function deterministic(c) {
+  const annualManualHours = c.manual_minutes_per_run / 60 * c.runs_per_year;
+  const naiveGrossSavedH = annualManualHours * c.horizon_years;
+
+  let grossSavedH = 0, maintH = 0;
+  for (const [frac, t] of yearChunks(c.horizon_years)) {
+    const weight = Math.pow(1 - c.obsolescence_hazard, t) / Math.pow(1 + c.discount_rate, t);
+    grossSavedH += annualManualHours * c.reliability * frac * weight;
+    maintH += c.maintenance_hours_per_year * frac * weight;
+  }
+  grossSavedH *= c.p_go_live;
+  maintH *= c.p_go_live;
+
+  const riskAdjustedNetH = grossSavedH - maintH - c.build_hours;
+
+  const valueSek = hoursToValueSek(grossSavedH, c);
+  const maintSek = maintH * c.build_hourly_cost_sek;   // underhåll = byggarens timme
+  const buildSek = c.build_hours * c.build_hourly_cost_sek;
+  const netSek = valueSek - maintSek - buildSek;
+  const roiPct = buildSek ? netSek / buildSek * 100 : Infinity;
+
+  const valuePerRunSek = c.manual_minutes_per_run / 60 * c.reliability
+                       * c.capacity_realization * c.hourly_value_sek;
+  const maintPerRunSek = c.maintenance_hours_per_year / c.runs_per_year * c.build_hourly_cost_sek;
+  const netPerRunSek = valuePerRunSek - maintPerRunSek;
+  let breakevenRuns = Infinity, breakevenMonths = Infinity;
+  if (netPerRunSek > 0) {
+    breakevenRuns = buildSek / netPerRunSek;
+    breakevenMonths = breakevenRuns / (c.runs_per_year / 12);
+  }
+
+  return {
+    hourly_value: c.hourly_value_sek,
+    build_hourly_cost: c.build_hourly_cost_sek,
+    naive_gross_saved_h: naiveGrossSavedH,
+    risk_adjusted_net_h: riskAdjustedNetH,
+    build_sek: buildSek,
+    net_sek: netSek,
+    roi_pct: roiPct,
+    breakeven_runs: breakevenRuns,
+    breakeven_months: breakevenMonths,
+    verdict: netSek > 0 ? "AUTOMATISERA" : "LÅT BLI (räknar hem sig inte)",
+  };
+}
+
+/* --- Slumptal ------------------------------------------------------------ */
+
+function makeRng(seed) {
+  // mulberry32: liten, snabb och reproducerbar.
+  let a = (seed >>> 0) || 1;
+  let spare = null;
+  const uniform = () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const normal = () => {                       // Box-Muller med sparad andra rot
+    if (spare !== null) { const s = spare; spare = null; return s; }
+    let u = 0, v = 0;
+    while (u === 0) u = uniform();
+    while (v === 0) v = uniform();
+    const r = Math.sqrt(-2 * Math.log(u)), th = 2 * Math.PI * v;
+    spare = r * Math.sin(th);
+    return r * Math.cos(th);
+  };
+  const lognormal = (mu, sigma) => Math.exp(mu + sigma * normal());
+  const triangular = (left, mode, right) => {  // inversa fördelningsfunktionen
+    const u = uniform(), span = right - left;
+    if (span <= 0) return left;
+    const fc = (mode - left) / span;
+    return u < fc
+      ? left + Math.sqrt(u * span * (mode - left))
+      : right - Math.sqrt((1 - u) * span * (right - mode));
+  };
+  const gamma = (shape, scale) => {            // Marsaglia-Tsang
+    if (shape < 1) return gamma(shape + 1, scale) * Math.pow(uniform(), 1 / shape);
+    const d = shape - 1 / 3, cc = 1 / Math.sqrt(9 * d);
+    for (;;) {
+      let x, w;
+      do { x = normal(); w = 1 + cc * x; } while (w <= 0);
+      const v = w * w * w, u = uniform(), x2 = x * x;
+      if (u < 1 - 0.0331 * x2 * x2) return d * v * scale;
+      if (Math.log(u) < 0.5 * x2 + d * (1 - v + Math.log(v))) return d * v * scale;
+    }
+  };
+  const beta = (alpha, betaP) => {
+    const x = gamma(alpha, 1), y = gamma(betaP, 1);
+    return (x + y) === 0 ? 0.5 : x / (x + y);
+  };
+  const betaFromMean = (mean, conf) => {
+    const m = Math.min(Math.max(mean, 1e-6), 1 - 1e-6);
+    return beta(m * conf, (1 - m) * conf);
+  };
+  return { uniform, normal, lognormal, triangular, gamma, beta, betaFromMean };
+}
+
+/** Percentil med linjär interpolation (samma konvention som numpy.percentile). */
+function percentile(sorted, q) {
+  const n = sorted.length;
+  if (n === 0) return NaN;
+  const pos = (q / 100) * (n - 1);
+  const lo = Math.floor(pos), hi = Math.ceil(pos);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+function monteCarlo(c, nSims, seed) {
+  const rng = makeRng(seed);
+  const chunks = yearChunks(c.horizon_years);
+  const net = new Float64Array(nSims);
+  const logBuild = Math.log(c.build_hours);
+  const maintScale = c.maintenance_hours_per_year / c.maint_gamma_shape;
+
+  let profitable = 0, flops = 0, sumNet = 0, sumBuildSek = 0;
+  let downsideSum = 0, downsideN = 0;
+
+  for (let i = 0; i < nSims; i++) {
+    const buildH = rng.lognormal(logBuild, c.build_sigma);
+    const manual = rng.triangular(c.manual_minutes_per_run * c.manual_low_frac,
+                                  c.manual_minutes_per_run,
+                                  c.manual_minutes_per_run * c.manual_high_frac);
+    const reliability = rng.betaFromMean(c.reliability, c.reliability_conf);
+    const maint = c.maintenance_hours_per_year > 0
+      ? rng.gamma(c.maint_gamma_shape, maintScale) : 0;
+    const hazard = rng.betaFromMean(c.obsolescence_hazard, c.hazard_conf);
+
+    const annualManualHours = manual / 60 * c.runs_per_year;
+    let grossSavedH = 0, maintH = 0;
+    for (let k = 0; k < chunks.length; k++) {
+      const frac = chunks[k][0], t = chunks[k][1];
+      const weight = Math.pow(1 - hazard, t) / Math.pow(1 + c.discount_rate, t);
+      grossSavedH += annualManualHours * reliability * frac * weight;
+      maintH += maint * frac * weight;
+    }
+
+    const wentLive = rng.uniform() < c.p_go_live;
+    if (!wentLive) { grossSavedH = 0; maintH = 0; flops++; }
+
+    const buildSek = buildH * c.build_hourly_cost_sek;
+    const n = hoursToValueSek(grossSavedH, c) - maintH * c.build_hourly_cost_sek - buildSek;
+
+    net[i] = n;
+    sumNet += n;
+    sumBuildSek += buildSek;
+    if (n > 0) profitable++;
+    else { downsideSum += n; downsideN++; }   // n < 0 räknas som nedsida, n == 0 påverkar inte
+  }
+
+  const sorted = Float64Array.from(net).sort();
+  const emv = sumNet / nSims;
+  const meanBuild = sumBuildSek / nSims;
+  const pProfitable = profitable / nSims;
+
+  return {
+    net,
+    summary: {
+      p_profitable: pProfitable,
+      p_total_flop: flops / nSims,
+      emv_sek: emv,
+      roi_pct: meanBuild ? emv / meanBuild * 100 : Infinity,
+      p5: percentile(sorted, 5),
+      p10: percentile(sorted, 10),
+      p50: percentile(sorted, 50),
+      p90: percentile(sorted, 90),
+      cvar_sek: downsideN ? downsideSum / downsideN : 0,
+      verdict:
+        pProfitable > 0.85 ? "STARK AUTOMATISERA" :
+        pProfitable > 0.70 ? "AUTOMATISERA (men med marginal)" :
+        pProfitable > 0.50 ? "TVEKSAMT (för mycket nedsida)" :
+                             "LÅT BLI (mer sannolikt förlust)",
+    },
+  };
+}
+
+const SENS_LABELS = {
+  manual_minutes_per_run: "Minuter per körning",
+  runs_per_year: "Körningar per år",
+  horizon_years: "Horisont (år)",
+  build_hours: "Byggtid",
+  maintenance_hours_per_year: "Underhåll per år",
+  p_go_live: "Chans till produktion",
+  reliability: "Tillförlitlighet",
+  obsolescence_hazard: "Risk att processen dör",
+  capacity_realization: "Andel tid som blir värde",
+  monthly_salary_sek: "Månadslön (verksamheten)",
+  builder_monthly_salary_sek: "Månadslön (byggaren)",
+};
+
+function sensitivity(c, pct = 0.25) {
+  const params = ["manual_minutes_per_run", "runs_per_year", "horizon_years",
+                  "build_hours", "maintenance_hours_per_year",
+                  "p_go_live", "reliability", "obsolescence_hazard",
+                  "capacity_realization", "monthly_salary_sek"];
+  if (c.builder_monthly_salary_sek !== null) params.push("builder_monthly_salary_sek");
+
+  const adjust = (name, v) => PROB_PARAMS.has(name) ? clamp01(v) : v;
+  const rows = [];
+  for (const p of params) {
+    const original = c[p];
+    const probe = value => {
+      const t = recomputeRates(Object.assign({}, c, { [p]: adjust(p, value) }));
+      return deterministic(t).net_sek;
+    };
+    const low = probe(original * (1 - pct));
+    const high = probe(original * (1 + pct));
+    rows.push({ parameter: p, label: SENS_LABELS[p] || p, low, high, span: Math.abs(high - low) });
+  }
+  return rows.sort((a, b) => b.span - a.span);
+}
+
+/* ---------------------------------------------------------------------------
+   Formulär, presentation och diagram
+--------------------------------------------------------------------------- */
+
+const $ = id => document.getElementById(id);
+const nf0 = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 });
+const kr = v => Number.isFinite(v) ? nf0.format(Math.round(v)) + " kr" : "–";
+const tkr = v => nf0.format(Math.round(v / 1000)) + " tkr";
+const pct = v => nf0.format(Math.round(v * 100)) + " %";
+
+const FIELD_IDS = Object.keys(DEFAULTS);
+
+function readForm() {
+  const raw = {};
+  for (const id of FIELD_IDS) {
+    const el = $(id);
+    if (!el) { raw[id] = DEFAULTS[id]; continue; }
+    if (el.value.trim() === "") {
+      raw[id] = id === "builder_monthly_salary_sek" ? null : DEFAULTS[id];
+    } else {
+      raw[id] = Number(el.value);
+    }
+  }
+  const c = Object.assign({}, raw);
+  for (const p of PCT_FIELDS) c[p] = raw[p] / 100;
+  return recomputeRates(c);
+}
+
+function writeForm(values) {
+  for (const id of FIELD_IDS) {
+    const el = $(id);
+    if (!el) continue;
+    const v = values[id];
+    el.value = (v === null || v === undefined) ? "" : String(v);
+    const slider = $(id + "_r");
+    if (slider) slider.value = el.value;
+  }
+}
+
+function verdictClass(pProfitable) {
+  return pProfitable > 0.70 ? "good" : pProfitable > 0.50 ? "mid" : "bad";
+}
+
+function renderCards(det, mc) {
+  const cards = [
+    { k: "Väntevärde (EMV)", v: kr(mc.emv_sek), n: "snitt över alla scenarier", sign: mc.emv_sek },
+    { k: "Sannolikhet lönsam", v: pct(mc.p_profitable), n: "andel scenarier över noll" },
+    { k: "ROI", v: nf1.format(mc.roi_pct) + " %", n: "mot byggkostnaden", sign: mc.roi_pct },
+    { k: "Nedsida om det går fel", v: kr(mc.cvar_sek), n: "snitt av förlustscenarierna", sign: mc.cvar_sek },
+    { k: "Byggkostnad", v: kr(det.build_sek), n: nf0.format(Math.round(det.build_hourly_cost)) + " kr/h" },
+    { k: "Break-even", v: Number.isFinite(det.breakeven_runs)
+        ? nf0.format(Math.round(det.breakeven_runs)) + " körningar" : "aldrig",
+      n: Number.isFinite(det.breakeven_months)
+        ? "≈ " + nf1.format(det.breakeven_months) + " mån" : "täcker inte underhållet" },
+    { k: "Nettovärde (deterministiskt)", v: kr(det.net_sek), n: "utan simulering", sign: det.net_sek },
+    { k: "Riskjusterad nettotid", v: nf0.format(Math.round(det.risk_adjusted_net_h)) + " h",
+      n: "av " + nf0.format(Math.round(det.naive_gross_saved_h)) + " h naivt", sign: det.risk_adjusted_net_h },
+  ];
+  $("cards").innerHTML = cards.map(c => {
+    const cls = c.sign === undefined ? "" : (c.sign > 0 ? " pos" : c.sign < 0 ? " neg" : "");
+    return `<div class="card"><div class="k">${c.k}</div>
+            <div class="v${cls}">${c.v}</div><div class="n">${c.n}</div></div>`;
+  }).join("");
+}
+
+function renderTables(det, mc, sens) {
+  const row = $("mc-row");
+  const cells = [mc.p5, mc.p10, mc.p50, mc.p90];
+  [...row.children].slice(1).forEach((td, i) => {
+    td.textContent = kr(cells[i]);
+    td.style.color = cells[i] < 0 ? "var(--neg)" : "var(--pos)";
+  });
+
+  $("sens-table").tBodies[0].innerHTML = sens.map(r => `
+    <tr><td>${r.label}</td><td>${kr(r.low)}</td><td>${kr(r.high)}</td>
+        <td>${nf0.format(Math.round(r.span))} kr</td></tr>`).join("");
+}
+
+function renderSummary(c, det, mc, sens, nSims) {
+  const lines = [
+    "AUTOMATISERINGSBESLUT — riskjusterad kalkyl",
+    "",
+    `Case: ${nf0.format(c.manual_minutes_per_run)} min/körning × ` +
+      `${nf0.format(c.runs_per_year)} körningar/år, ${nf1.format(c.horizon_years)} års horisont,`,
+    `      ${nf0.format(c.build_hours)} h bygge, ${nf0.format(c.maintenance_hours_per_year)} h underhåll/år.`,
+    `Timpris: ${nf0.format(Math.round(det.hourly_value))} kr/h sparad timme, ` +
+      `${nf0.format(Math.round(det.build_hourly_cost))} kr/h byggtimme.`,
+    "",
+    `DOM: ${mc.verdict}`,
+    `  Sannolikhet lönsam .... ${pct(mc.p_profitable)}`,
+    `  Väntevärde (EMV) ...... ${kr(mc.emv_sek)}`,
+    `  ROI ................... ${nf1.format(mc.roi_pct)} %`,
+    `  Nedsida om fel (CVaR) . ${kr(mc.cvar_sek)}`,
+    `  Break-even ............ ${Number.isFinite(det.breakeven_runs)
+        ? nf0.format(Math.round(det.breakeven_runs)) + " körningar (≈ " +
+          nf1.format(det.breakeven_months) + " mån)" : "nås aldrig"}`,
+    "",
+    `Fördelning (${nf0.format(nSims)} simuleringar):`,
+    `  P5 ${kr(mc.p5)} | P10 ${kr(mc.p10)} | P50 ${kr(mc.p50)} | P90 ${kr(mc.p90)}`,
+    `  Sannolikhet totalflopp (når aldrig produktion): ${pct(mc.p_total_flop)}`,
+    "",
+    "Störst påverkan på utfallet (±25 %):",
+    ...sens.slice(0, 3).map((r, i) =>
+      `  ${i + 1}. ${r.label} — spann ${nf0.format(Math.round(r.span))} kr`),
+    "",
+    `Antaganden: ${pct(c.capacity_realization)} av sparad tid räknas som verkligt värde, ` +
+      `${pct(c.p_go_live)} chans att bygget når produktion,`,
+    `            ${pct(c.reliability)} tillförlitlighet, ${pct(c.obsolescence_hazard)} årlig risk att ` +
+      `processen dör, ${pct(c.discount_rate)} kalkylränta.`,
+  ];
+  $("summary-text").value = lines.join("\n");
+}
+
+/* --- Diagram ------------------------------------------------------------- */
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function setupCanvas(canvas, cssHeight) {
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = canvas.clientWidth || canvas.parentElement.clientWidth || 600;
+  canvas.style.height = cssHeight + "px";
+  canvas.width = Math.round(cssWidth * dpr);
+  canvas.height = Math.round(cssHeight * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+  return { ctx, w: cssWidth, h: cssHeight };
+}
+
+function drawHistogram(canvas, net, mc) {
+  const H = 300;
+  const { ctx, w, h } = setupCanvas(canvas, H);
+  const ink = cssVar("--ink"), soft = cssVar("--ink-soft"), line = cssVar("--line-soft");
+  const pad = { l: 12, r: 12, t: 28, b: 34 };   // toppmarginal = band för etiketterna
+
+  // Klipp svansarna så att kroppen av fördelningen syns.
+  const sorted = Float64Array.from(net).sort();
+  const lo = percentile(sorted, 0.2), hi = percentile(sorted, 99.8);
+  const span = hi - lo || 1;
+  const bins = 70;
+  const counts = new Array(bins).fill(0);
+  for (let i = 0; i < net.length; i++) {
+    let b = Math.floor((net[i] - lo) / span * bins);
+    if (b < 0) b = 0; else if (b >= bins) b = bins - 1;
+    counts[b]++;
+  }
+  const maxCount = Math.max(...counts) || 1;
+  const plotW = w - pad.l - pad.r, plotH = h - pad.t - pad.b;
+  const x = v => pad.l + (v - lo) / span * plotW;
+
+  ctx.fillStyle = cssVar("--accent");
+  ctx.globalAlpha = 0.85;
+  const bw = plotW / bins;
+  for (let i = 0; i < bins; i++) {
+    const bh = counts[i] / maxCount * plotH;
+    ctx.fillRect(pad.l + i * bw, pad.t + plotH - bh, Math.max(bw - 0.6, 0.6), bh);
+  }
+  ctx.globalAlpha = 1;
+
+  // Baslinje
+  ctx.strokeStyle = line; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t + plotH + 0.5);
+  ctx.lineTo(w - pad.r, pad.t + plotH + 0.5); ctx.stroke();
+
+  const tight = w < 560;                        // smala kolumner: bara percentilnamnet
+  const mark = (name, v) => tight ? name : name + " " + tkr(v);
+  const marks = [
+    { v: 0, color: ink, label: tight ? "0" : "Break-even", dash: [4, 3] },
+    { v: mc.p5, color: cssVar("--neg"), label: mark("P5", mc.p5), dash: [] },
+    { v: mc.p50, color: cssVar("--pos"), label: mark("P50", mc.p50), dash: [] },
+    { v: mc.p90, color: soft, label: mark("P90", mc.p90), dash: [] },
+  ];
+  ctx.font = "11px -apple-system, Segoe UI, Roboto, sans-serif";
+  ctx.textBaseline = "top";
+  for (const m of marks) {
+    if (m.v < lo || m.v > hi) continue;
+    const px = Math.round(x(m.v)) + 0.5;
+    ctx.save();
+    ctx.setLineDash(m.dash); ctx.strokeStyle = m.color; ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.moveTo(px, pad.t); ctx.lineTo(px, pad.t + plotH); ctx.stroke();
+    ctx.restore();
+    const tw = ctx.measureText(m.label).width;
+    ctx.fillStyle = m.color;
+    ctx.textAlign = px + tw + 6 > w - pad.r ? "right" : "left";
+    ctx.fillText(m.label, ctx.textAlign === "left" ? px + 4 : px - 4, 4);
+  }
+
+  // X-axel
+  ctx.fillStyle = soft; ctx.textBaseline = "top";
+  const ticks = tight ? 3 : 5;
+  for (let i = 0; i <= ticks; i++) {
+    const v = lo + span * i / ticks;
+    const px = x(v);
+    ctx.textAlign = i === 0 ? "left" : i === ticks ? "right" : "center";
+    ctx.fillText(tkr(v), px, pad.t + plotH + 8);
+  }
+  ctx.textAlign = "center";
+  ctx.fillText("Nettovärde per scenario", w / 2, pad.t + plotH + 21);
+}
+
+function drawTornado(canvas, sens, baseNet) {
+  const rows = sens.slice().reverse();          // störst spann överst
+  const rowH = 26;
+  const H = Math.max(160, rows.length * rowH + 46);
+  const { ctx, w, h } = setupCanvas(canvas, H);
+  const soft = cssVar("--ink-soft"), ink = cssVar("--ink");
+
+  ctx.font = "12px -apple-system, Segoe UI, Roboto, sans-serif";
+  const labelW = Math.min(190, Math.max(...rows.map(r => ctx.measureText(r.label).width)) + 12);
+  const pad = { l: labelW + 8, r: 14, t: 10, b: 32 };
+  const plotW = w - pad.l - pad.r, plotH = h - pad.t - pad.b;
+
+  let lo = baseNet, hi = baseNet;
+  for (const r of rows) {
+    lo = Math.min(lo, r.low, r.high);
+    hi = Math.max(hi, r.low, r.high);
+  }
+  const padding = (hi - lo || 1) * 0.06;
+  lo -= padding; hi += padding;
+  const x = v => pad.l + (v - lo) / (hi - lo) * plotW;
+
+  const step = plotH / rows.length;
+  rows.forEach((r, i) => {
+    const y = pad.t + i * step + step / 2;
+    const a = Math.min(r.low, r.high), b = Math.max(r.low, r.high);
+    const barH = Math.min(16, step - 5);
+    ctx.fillStyle = cssVar("--accent");
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(x(a), y - barH / 2, Math.max(x(b) - x(a), 1.5), barH);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = ink;
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText(r.label, pad.l - 8, y);
+  });
+
+  // Baslinje = nettovärdet i grundcaset
+  const bx = Math.round(x(baseNet)) + 0.5;
+  ctx.save();
+  ctx.setLineDash([4, 3]); ctx.strokeStyle = ink; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(bx, pad.t); ctx.lineTo(bx, pad.t + plotH); ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = soft; ctx.textBaseline = "top";
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const v = lo + (hi - lo) * i / ticks;
+    ctx.textAlign = i === 0 ? "left" : i === ticks ? "right" : "center";
+    ctx.fillText(tkr(v), x(v), pad.t + plotH + 8);
+  }
+  ctx.textAlign = "center";
+  ctx.fillText("Nettovärde vid ±25 % på parametern (streckat = grundcase)", w / 2, pad.t + plotH + 21);
+}
+
+/* --- Kör ----------------------------------------------------------------- */
+
+let lastRun = null;
+
+function run() {
+  const c = readForm();
+  const errs = validate(c);
+  if (errs.length) {
+    $("form-status").textContent = "Kontrollera: " + errs[0];
+    $("verdict-text").textContent = "—";
+    $("verdict-sub").textContent = "Ofullständig indata";
+    return;
+  }
+  $("form-status").textContent = "";
+
+  const nSims = Math.round(Number($("n_sims").value)) || 50000;
+  const seed = Math.round(Number($("seed").value)) || 42;
+
+  const det = deterministic(c);
+  const { net, summary: mc } = monteCarlo(c, nSims, seed);
+  const sens = sensitivity(c);
+
+  $("verdict").className = "verdict " + verdictClass(mc.p_profitable);
+  $("verdict-text").textContent = mc.verdict;
+  $("verdict-sub").textContent =
+    `${pct(mc.p_profitable)} chans att det lönar sig · väntevärde ${kr(mc.emv_sek)}`;
+
+  renderCards(det, mc);
+  renderTables(det, mc, sens);
+  renderSummary(c, det, mc, sens, nSims);
+
+  const sameRate = Math.round(det.hourly_value) === Math.round(det.build_hourly_cost);
+  $("rate-note").textContent = sameRate
+    ? `Timpris härlett från ${nf0.format(c.monthly_salary_sek)} kr/mån: ` +
+      `${nf0.format(Math.round(det.hourly_value))} kr/h fullt belastat.`
+    : `Sparad timme ${nf0.format(Math.round(det.hourly_value))} kr/h, ` +
+      `byggtimme ${nf0.format(Math.round(det.build_hourly_cost))} kr/h — olika yrkesgrupper.`;
+
+  lastRun = { net, mc, sens, baseNet: det.net_sek };
+  redraw();
+  updateHash(c);
+}
+
+function redraw() {
+  if (!lastRun) return;
+  drawHistogram($("hist"), lastRun.net, lastRun.mc);
+  drawTornado($("tornado"), lastRun.sens, lastRun.baseNet);
+}
+
+/* --- Länk till caset (parametrar i URL:ens hash) -------------------------- */
+
+function updateHash(c) {
+  const params = new URLSearchParams();
+  for (const id of FIELD_IDS) {
+    const el = $(id);
+    if (!el) continue;
+    const val = el.value.trim();
+    const def = DEFAULTS[id];
+    const defStr = (def === null || def === undefined) ? "" : String(def);
+    if (val !== defStr) params.set(id, val);
+  }
+  const hash = params.toString();
+  try {
+    history.replaceState(null, "", hash ? "#" + hash : location.pathname + location.search);
+  } catch (e) { /* sandbox utan history-åtkomst, strunt samma */ }
+}
+
+function readHash() {
+  const hash = location.hash.replace(/^#/, "");
+  if (!hash) return false;
+  const params = new URLSearchParams(hash);
+  let any = false;
+  for (const [k, v] of params) {
+    const el = $(k);
+    if (!el) continue;
+    el.value = v;
+    const slider = $(k + "_r");
+    if (slider) slider.value = v;
+    any = true;
+  }
+  return any;
+}
+
+function copyText(text, statusEl) {
+  const done = ok => {
+    statusEl.textContent = ok ? "Kopierat." : "Kunde inte kopiera — markera texten manuellt.";
+    setTimeout(() => { statusEl.textContent = ""; }, 3000);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => done(true), () => fallback());
+  } else fallback();
+
+  function fallback() {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    done(ok);
+  }
+}
+
+/* --- Händelser ----------------------------------------------------------- */
+
+let timer = null;
+function scheduleRun() {
+  clearTimeout(timer);
+  timer = setTimeout(run, 160);
+}
+
+for (const id of FIELD_IDS) {
+  const el = $(id);
+  if (!el) continue;
+  el.addEventListener("input", () => {
+    const slider = $(id + "_r");
+    if (slider) slider.value = el.value;
+    scheduleRun();
+  });
+  const slider = $(id + "_r");
+  if (slider) {
+    slider.addEventListener("input", () => { el.value = slider.value; scheduleRun(); });
+  }
+}
+$("n_sims").addEventListener("change", scheduleRun);
+
+$("reset").addEventListener("click", () => { writeForm(DEFAULTS); run(); });
+
+$("copy-summary").addEventListener("click", () =>
+  copyText($("summary-text").value, $("copy-status")));
+
+$("permalink").addEventListener("click", () => {
+  const c = readForm();
+  updateHash(c);
+  copyText(location.href, $("form-status"));
+});
+
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(redraw, 120);
+});
+if (window.matchMedia) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  if (mq.addEventListener) mq.addEventListener("change", redraw);
+}
+
+writeForm(DEFAULTS);
+readHash();
+run();
+</script>
+</body>
+</html>

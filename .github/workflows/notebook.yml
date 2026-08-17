@@ -27,3 +27,28 @@ jobs:
         run: |
           jupyter nbconvert --to notebook --execute \
             --output /tmp/executed.ipynb projektautomatisering.ipynb
+
+  # Modellen finns på två ställen, och två implementationer glider isär om
+  # ingen tittar till dem.
+  parity:
+    name: Kalkylatorn räknar som notebooken
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installera beroenden
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Jämför HTML-kalkylatorn med notebooken
+        run: python tools/parity_check.py

@@ -1,0 +1,6 @@
+numpy>=1.24
+pandas>=2.0
+matplotlib>=3.7
+
+# För att öppna och köra notebooken
+jupyterlab>=4.0

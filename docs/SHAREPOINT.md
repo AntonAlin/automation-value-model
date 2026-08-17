@@ -5,7 +5,8 @@ diagrammen. Ingen server, inga externa bibliotek, inga nätverksanrop — allt r
 webbläsaren. Det gör den enkel att bädda in, och det gör den lätt att svara på när någon
 frågar vart lönesiffrorna tar vägen: ingenstans, de lämnar aldrig datorn.
 
-Tre vägar in i SharePoint, i ordning efter hur snabbt de går.
+Fyra vägar in i SharePoint. Väg A ger den inbäddad på sidan, väg D är den enklaste av
+allihop om man kan leva med att folk laddar ner den.
 
 ---
 
@@ -86,6 +87,31 @@ publicera till appkatalogen, men ger paketering, versionshantering och inställn
 
 Lönt bara om många ska använda den återkommande. För ett beslutsunderlag som används
 någon gång i månaden räcker väg A.
+
+---
+
+## D. Bara ladda upp filen och låta folk hämta hem den (enklast)
+
+Lägg `kalkylator.html` i ett vanligt dokumentbibliotek och länka till den från sidan.
+SharePoint laddar ner filen istället för att visa den, och användaren öppnar den i sin
+webbläsare. Eftersom filen är självständig fungerar den lika bra från hårddisken:
+inga nätverksanrop, diagram och beräkningar körs som vanligt, och både
+*Kopiera sammanfattning* och *Kopiera länk till caset* fungerar från `file://`.
+
+Ingen administratör behövs, ingen tillåtelselista, inget externt beroende. Två saker att
+väga in ändå:
+
+**Versionsdrift är den verkliga kostnaden.** Varje nedladdning är en kopia som aldrig
+uppdateras. Rättar man en parameter om ett halvår sitter halva avdelningen kvar på den
+gamla filen, och två personer får olika svar på samma case utan att förstå varför.
+Datumstämpla filnamnet (`kalkylator-2026-08.html`) så syns det åtminstone.
+
+**Friktionen avgör om den används.** Klicka, ladda ner, leta i Hämtade filer, öppna — mot
+noll steg för en inbäddad sida. Ska kalkylen faktiskt användas i beslut och inte bara
+finnas är väg A värd de tio minuterna.
+
+Edge och Chrome frågar ibland "Behåll?" på nedladdade HTML-filer. Det är ofarligt men ser
+skumt ut för den som inte väntat sig det, så det är värt en rad i texten på sidan.
 
 ---
 
